@@ -10,6 +10,7 @@ const theatreSchema = new mongoose.Schema({
   title: {type:String, required:true},
   theatre_name: { type: String, required: true },
   movie_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie' },
+  showtime: { type:Array, required: true }
 });
 
 //showtime schema
@@ -18,11 +19,18 @@ const showtimeSchema = new mongoose.Schema({
   showtime: { type:Array, required: true },
   movie_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie', required: true }
 });
+const ticketSchema = new mongoose.Schema({
+  movie: { type: mongoose.Schema.Types.ObjectId, ref: 'Movie', required: true },
+  theatre: { type: mongoose.Schema.Types.ObjectId, ref: 'Theatre', required: true },
+  showtime: { type: Array, required: true },
+ 
+});
 
+const Ticket = mongoose.model('Ticket', ticketSchema);
 const Movie = mongoose.model('Movie', movieSchema);
 
 const Showtime = mongoose.model('Showtime', showtimeSchema);
 
 const Theatre = mongoose.model('Theatre', theatreSchema);
 
-module.exports = {Movie,Theatre,Showtime};
+module.exports = {Movie,Theatre,Showtime,Ticket};

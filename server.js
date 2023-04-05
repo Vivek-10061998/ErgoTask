@@ -1,7 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const { Movie, Theatre, Showtime } = require('./model/movie');
+const { Movie, Theatre, Showtime, Ticket } = require('./model/movie');
 const ObjectId = require('mongodb').ObjectId;
 const authRoutes = require('./route/auth');
 const userRoutes = require('./route/user');
@@ -43,7 +43,7 @@ app.get('/', (req, res) => {
   res.send('welcome to Book my show!!!')
 });
 
-//get all movies
+//get all movies(to see all the movies playing in your city)
 app.get('/getAllMovies', async (req, res) => {
   try {
     const movies = await Movie.find()
@@ -53,8 +53,8 @@ app.get('/getAllMovies', async (req, res) => {
   }
 })
 
-//movie create
-app.post('/movie', async (req, res) => {
+//movie create API(For Admin use)
+app.post('/movie' ,async (req, res) => {
   try {
     const { title } = req.body;
     const movie = await Movie({ title });
@@ -64,16 +64,52 @@ app.post('/movie', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-//book ticket
 
-app.post('/book-ticket/:movie_id', authenticate, async (req, res) => {
+//book ticket API(for logged in user only)
+app.post('/book-ticket',authenticate, async (req, res) => {
+  try {
+    const { title, theatre_name, showtime } = req.body;
+
+    // Check if the movie exists in the Movie collection
+    const movie = await Movie.findOne({ title });
+    if (!movie) {
+      return res.status(404).json({ message: 'Movie not found' });
+    }
+
+    // Check if the theatre exists in the Theatre collection
+    const theatre = await Theatre.findOne({ theatre_name });
+    if (!theatre) {
+      return res.status(404).json({ message: 'Theatre not found' });
+    }
+
+    // Check if the specified showtime is in the Showtime array for the specified theatre name
+  
+    const show_time = await Showtime.findOne( { theatre_name, showtime });
+    
+    if (!show_time) {
+      return res.status(404).json({ message: 'Showtime not found' });
+    }
+
+    // Create a new ticket in the Ticket collection
+    const ticket = new Ticket({
+      movie: movie._id,
+      theatre: theatre._id,
+      showtime: showtime
+    });
+
+    await ticket.save();
+    res.status(200).json({ message: 'Ticket booked successfully' });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+//get all theatres in your city along with the movie name and showtimings
+
+app.get('/getAllTheatre', authenticate, async (req, res) => {
 
   try {
-    const movieTitle = req.body.title; // access the movie title from the request body
     const movie = await Movie.aggregate([
-      {
-        $match: { _id: new ObjectId(req.params.movie_id), title: movieTitle }
-      },
       {
         $lookup: {
           from: 'theatres',
@@ -114,7 +150,7 @@ app.post('/book-ticket/:movie_id', authenticate, async (req, res) => {
 
 
 
-//theatre create
+//theatre create(Admin use only)
 app.post('/theatre/:movie_id', async (req, res) => {
   try {
     const { theatre_name, title } = req.body;
@@ -136,7 +172,7 @@ app.post('/theatre/:movie_id', async (req, res) => {
   }
 });
 
-//showtime create
+//showtime create(Admin use only)
 app.post('/showtime/:movie_id', async (req, res) => {
   try {
     const { theatre_name, showtime } = req.body;
@@ -146,7 +182,7 @@ app.post('/showtime/:movie_id', async (req, res) => {
       return res.status(404).json({ error: 'Movie not found' });
     }
     const show_time = await Showtime({
-      movie: movie._id, // set movie field with the _id of the retrieved movie
+      movie: movie._id, 
       movie_id,
       theatre_name,
       showtime
